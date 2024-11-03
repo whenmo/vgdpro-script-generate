@@ -59,15 +59,19 @@ def get_lua_with_line(line: str):
 
 def get_lua_code(name: str, text: str):
     initial = ""
-    for line in text.split("\n"):
-        initial += f"   --{line}\n"
-        initial += f"   {get_lua_with_line(line)}\n"
+    t = text.split("\n")
+    for i in range(0, len(t)):
+        line = t[i]
+        initial += f"\t--{line}"
+        if i == len(t) - 1:
+            initial += "\n"
+        initial += f"\t{get_lua_with_line(line)}\n"
 
     return f"""--{name}
 local cm, m, o = GetID()
 function cm.initial_effect(c)
-    vgf.VgCard(c)
-{initial}end    
+\tvgf.VgCard(c)
+{initial}end
 """
     # initial 最後有換行符, 因此 end 不換行
 
