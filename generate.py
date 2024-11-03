@@ -126,7 +126,7 @@ def Generate_File(txt_component):
             cm_path = os.path.join(script_path, cm)
 
             if os.path.exists(cm_path) and Select_Yes_No(
-                f"以下檔案已經存在, 是否跳過\n{cm}"
+                f"以下檔案已經存在\n{cm}"
             ):
                 continue
 
