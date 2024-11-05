@@ -74,6 +74,7 @@ def Select_Cover(lang: dict, cards: list[dict]):
     # '當前頁全選', '當前頁全取消' 按鈕
     def Change_All(change_lst: list[Item], change_var: bool):
         for item in change_lst:
+            item.button.select() if change_var else item.button.deselect()
             item.var.set(change_var)
 
     next_row += 1 + min(len(items_lst[0]), 10)
