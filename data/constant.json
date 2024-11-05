@@ -1,0 +1,14 @@
+{
+    "loc": {
+        "V": "LOCATION_VZONE",
+        "R": "LOCATION_RZONE",
+        "G": "LOCATION_GZONE",
+        "灵魂": "LOCATION_OVERLAY",
+        "弃牌区": "LOCATION_DROP",
+        "手牌": "LOCATION_HAND"
+    },
+    "typ": {
+        "起": "vgd.EffectTypeIgnition(c, m, %s, op, cost, con, tg, %s, property)",
+        "自": "vgd.EffectTypeTrigger(c, m, %s, typ, code, op, cost, con, tg, %s, property)"
+    }
+}

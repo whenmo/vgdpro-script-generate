@@ -1,13 +1,20 @@
 import tkinter as tk
-from tkinter import Text, BooleanVar, filedialog, messagebox
-import json, os
-from generate import Generate_File
+from tkinter import messagebox, filedialog
+import json
+import generate
 
 
-def main(lang: dict):
+# 獲取全局變數
+with open("data/data.json", "r", encoding="utf-8") as file:
+    DATA: dict = json.load(file)
+with open(f"data/{DATA['lang']}.json", "r", encoding="utf-8") as file:
+    LANG: dict = json.load(file)
+
+
+def main():
     # 創建主窗口
     root = tk.Tk()
-    root.title(lang["main.root.title"])
+    root.title(LANG["main.root.title"])
 
     # 路徑 txt
     path_txt = tk.Text(root, width=60, height=1)
@@ -15,14 +22,10 @@ def main(lang: dict):
 
     # '生成'按鈕
     def load_Generate_File():
-        with open("data/data.json", "r", encoding="utf-8") as file:
-            decision = json.load(file)["repeat_decision"]
-        Generate_File(
-            lang=lang, path=path_txt.get("1.0", "end-1c"), repeat_decision=decision
-        )
+        generate.Generate_File(path_txt.get("1.0", "end-1c"), DATA["repeat_decision"])
 
     tk.Button(
-        root, text=lang["main.button.generate"], command=load_Generate_File, width=15
+        root, text=LANG["main.button.generate"], command=load_Generate_File, width=15
     ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
     def select_path(open_method: str):
@@ -38,7 +41,7 @@ def main(lang: dict):
     # '選擇檔案'按鈕
     tk.Button(
         root,
-        text=lang["main.button.select_cdb"],
+        text=LANG["main.button.select_cdb"],
         command=lambda: select_path("askopenfilename"),
         width=15,
     ).grid(row=1, column=1, padx=10, pady=10, sticky="w")
@@ -46,14 +49,14 @@ def main(lang: dict):
     # '選擇資料夾'按鈕
     tk.Button(
         root,
-        text=lang["main.button.select_file"],
+        text=LANG["main.button.select_file"],
         command=lambda: select_path("askdirectory"),
         width=15,
     ).grid(row=1, column=2, padx=10, pady=10, sticky="w")
 
     # 重複項目處理 groupbox
     group_repeat_decision = tk.LabelFrame(
-        root, text=lang["main.LabelFrame.repeat_decision"], padx=10, pady=10
+        root, text=LANG["main.LabelFrame.repeat_decision"], padx=10, pady=10
     )
     group_repeat_decision.grid(
         row=3, column=0, padx=10, pady=10, columnspan=3, sticky="w"
@@ -61,26 +64,21 @@ def main(lang: dict):
 
     # '總是覆蓋檔案', '總是跳過檔案' 勾選框
     def Select_File_Decision(typ: str):
-        with open("data/data.json", "r", encoding="utf-8") as file:
-            data = json.load(file)
-        if repeat_decision[typ].get():
-            data["repeat_decision"] = typ
-            _typ = "skip" if typ == "cover" else "cover"
-            repeat_decision[_typ].set(False)
-        else:
-            data["repeat_decision"] = "ask"
+        DATA["repeat_decision"] = "ask"
+        if decision_dict[typ].get():
+            DATA["repeat_decision"] = typ
+            typ = "skip" if typ == "cover" else "cover"
+            decision_dict[typ].set(False)
         with open("data/data.json", "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
+            json.dump(DATA, file, ensure_ascii=False, indent=4)
 
-    repeat_decision: dict[str, BooleanVar] = {}
+    decision_dict: dict[str, tk.BooleanVar] = {}
     for col, key in enumerate(["cover", "skip"]):
-        with open("data/data.json", "r", encoding="utf-8") as file:
-            var = json.load(file)["repeat_decision"] == key
-        repeat_decision[key] = BooleanVar(value=var)
+        decision_dict[key] = tk.BooleanVar(value=DATA["repeat_decision"] == key)
         tk.Checkbutton(
             group_repeat_decision,
-            text=lang["main.checkbutton." + key],
-            variable=repeat_decision[key],
+            text=LANG["main.checkbutton." + key],
+            variable=decision_dict[key],
             command=lambda k=key: Select_File_Decision(k),
         ).grid(row=0, column=col)
 
@@ -88,10 +86,10 @@ def main(lang: dict):
     def Lang_Change():
         with open("data/data.json", "r", encoding="utf-8") as file:
             data = json.load(file)
-        data["lang"] = "zh_tw" if data["lang"] == "zh_cn" else "zh_cn"
+        DATA["lang"] = "zh_tw" if DATA["lang"] == "zh_cn" else "zh_cn"
         with open("data/data.json", "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        messagebox.showinfo(lang["message.success"], lang["main.button.lang_change"])
+        messagebox.showinfo(LANG["message.success"], LANG["main.button.lang_change"])
 
     tk.Button(
         root,
@@ -105,8 +103,4 @@ def main(lang: dict):
 
 
 if __name__ == "__main__":
-    with open("data/data.json", "r", encoding="utf-8") as file:
-        data: json = json.load(file)
-    with open(f"data/{data['lang']}.json", "r", encoding="utf-8") as file:
-        lang = json.load(file)
-    main(lang)
+    main()

@@ -1,26 +1,25 @@
-import os, sqlite3
+import os, sqlite3, json
 from tkinter import messagebox
+from main import LANG
 from form import Select_Cover
 
 
+# 獲取 constant
+def Get_Dic() -> tuple[dict, dict]:
+    with open("data/constant.json", "r", encoding="utf-8") as file:
+        data: dict = json.load(file)
+        loc_dic: dict = data["loc"]
+        typ_dic: dict = data["typ"]
+    return loc_dic, typ_dic
+
+
+loc_dic, typ_dic = Get_Dic()
+
+
 # 生成 lua
-def Get_Loc(pros: str):
-    loc_typ_dic = {
-        "V": "LOCATION_VZONE",
-        "R": "LOCATION_RZONE",
-        # "V/R": "LOCATION_MZONE",
-        "G": "LOCATION_GZONE",
-        "灵魂": "LOCATION_OVERLAY",
-        "弃牌区": "LOCATION_DROP",
-        "手牌": "LOCATION_HAND",
-    }
-
-    _loc = "nil"
-    for loc_typ in loc_typ_dic.keys():
-        if loc_typ in pros:
-            _loc += "+" + loc_typ_dic[loc_typ]
-
-    return _loc[4:] if len(_loc) > 3 else _loc
+def Get_Loc(pros: str) -> str:
+    _loc = [var for key, var in loc_dic.items() if key in pros]
+    return "+".join(_loc) if _loc else "nil"
 
 
 def Get_Pro(pros: str):
@@ -53,11 +52,9 @@ def Get_Line_Lua(line: str):
 def Generate_Lua_File(card: dict):
     # get initial
     initial = ""
-    lines = card["desc"].split("\n")
-    for i, line in enumerate(lines):
-        initial += f"\t--{line}\n"
-        if i == len(lines) - 1:
-            initial += "\n"
+    lines: str = card["desc"].split("\n")
+    for line in lines:
+        initial += f"\t--{line.strip()}\n"
         initial += f"\t{Get_Line_Lua(line)}\n"
     # generate Lua
     lua = f"""--{card["name"]}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end"""
@@ -67,12 +64,12 @@ def Generate_Lua_File(card: dict):
     return card["cm"] + "\n"
 
 
-def Get_Cdb_File(lang: dict, path: str):
+def Get_Cdb_File(path: str):
     # chk path
     if path.endswith(".cdb"):
         return [path]
     elif not os.path.isdir(path):
-        messagebox.showerror(lang["message.error"], lang["message.error.not_legal"])
+        messagebox.showerror(LANG["message.error"], LANG["message.error.not_legal"])
         return []
     # get file paths
     cdb_files, find_path = [], False
@@ -83,19 +80,19 @@ def Get_Cdb_File(lang: dict, path: str):
             if file.endswith(".cdb"):  # 檢查是否為檔案
                 cdb_files.append(os.path.join(path, file))  # 獲取完整路徑
     except FileNotFoundError:
-        messagebox.showerror(lang["message.error"], lang["message.error.not_exist"])
+        messagebox.showerror(LANG["message.error"], LANG["message.error.not_exist"])
     except PermissionError:
         messagebox.showerror(
-            lang["message.error"], lang["message.error.not_permissions"]
+            LANG["message.error"], LANG["message.error.not_permissions"]
         )
     if find_path and len(cdb_files) == 0:
-        messagebox.showerror(lang["message.error"], lang["message.error.not_cdb"])
+        messagebox.showerror(LANG["message.error"], LANG["message.error.not_cdb"])
     return cdb_files
 
 
-def Generate_File(lang: dict, path: str, repeat_decision: str):
+def Generate_File(path: str, repeat_decision: str):
     # load cdbs
-    for cdb_path in Get_Cdb_File(lang, path):
+    for cdb_path in Get_Cdb_File(path):
         # get script_path from cdb_path
         script_path = os.path.join(os.path.dirname(cdb_path), "script")
         if not os.path.exists(script_path):  # 如果資料夾不存在，則創建它
@@ -127,12 +124,11 @@ def Generate_File(lang: dict, path: str, repeat_decision: str):
             show_res += Generate_Lua_File(card)
 
         if len(cover_cards) > 0:
-            for card in Select_Cover(lang, cover_cards):
+            for card in Select_Cover(cover_cards):
                 show_res += Generate_Lua_File(card)
 
         messagebox.showinfo(
-            lang["message.success"],
-            lang["message.generate_success"]
+            LANG["message.success"],
+            LANG["message.generate_success"]
             % (script_path, show_res, show_res.count("\n")),
-            # f"{script_path}\n已在以上目錄中生成 :\n{show_res}共計 {show_res.count("\n")} 個檔案",
         )
