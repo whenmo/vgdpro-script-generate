@@ -109,4 +109,8 @@ def Select_Cover(cards: list[dict]):
             if item.var.get():
                 res_lst.append(item.card)
 
+<<<<<<< Updated upstream
+=======
+    # messagebox.showinfo("成功", f"已選共計 {len(res_lst)} 個檔案")
+>>>>>>> Stashed changes
     return res_lst
