@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from main import LANG
+from main import LANG, Creat_Button
 
 
 class Item:
@@ -38,19 +38,12 @@ def Select_Cover(cards: list[dict]):
 
             page_ind.set(ind)
 
-        tk.Button(
-            root,
-            text=LANG["form.button.pre"],
-            command=lambda: Page_Change(False),
-            width=15,
-        ).grid(row=next_row, column=0, padx=10, pady=10)
-        tk.Button(
-            root,
-            text=LANG["form.button.next"],
-            command=lambda: Page_Change(True),
-            width=15,
-        ).grid(row=next_row, column=1, padx=10, pady=10)
-
+        Creat_Button(root, "form.button.pre", lambda: Page_Change(False)).grid(
+            row=next_row, column=0, padx=10, pady=10
+        )
+        Creat_Button(root, "form.button.next", lambda: Page_Change(True)).grid(
+            row=next_row, column=1, padx=10, pady=10
+        )
         next_row += 1
 
     # 創建勾選框
@@ -71,36 +64,29 @@ def Select_Cover(cards: list[dict]):
             check_button.grid_remove()
 
     # '當前頁全選', '當前頁全取消' 按鈕
-    def Change_All(change_lst: list[Item], change_var: bool):
-        for item in change_lst:
+    def Change_All(change_var: bool):
+        for item in items_lst[page_ind.get()]:
             item.button.select() if change_var else item.button.deselect()
             item.var.set(change_var)
 
     next_row += 1 + min(len(items_lst[0]), 10)
 
-    tk.Button(
-        root,
-        text=LANG["form.button.all_select"],
-        command=lambda: Change_All(items_lst[page_ind.get()], True),
-        width=15,
-    ).grid(row=next_row, column=0, padx=10, pady=10)
-
-    tk.Button(
-        root,
-        text=LANG["form.button.all_cancel"],
-        command=lambda: Change_All(items_lst[page_ind.get()], False),
-        width=15,
-    ).grid(row=next_row, column=1, padx=10, pady=10)
+    Creat_Button(root, "form.button.all_select", lambda: Change_All(True)).grid(
+        row=next_row, column=0, padx=10, pady=10
+    )
+    Creat_Button(root, "form.button.all_cancel", lambda: Change_All(False)).grid(
+        row=next_row, column=1, padx=10, pady=10
+    )
 
     # '確認' 按鈕
     def Enter():
         root.quit()
         root.destroy()
 
-    tk.Button(root, text=LANG["form.button.confirm"], command=Enter, width=15).grid(
+    Creat_Button(root, "form.button.confirm", Enter).grid(
         row=next_row + 1, column=0, padx=10, pady=10
     )
-
+    
     root.mainloop()
     # 處理返回值
     res_lst = []

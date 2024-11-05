@@ -27,8 +27,8 @@ def Get_Pro(pros: str):
     count = "1" if "【1回合1次】" in pros else "nil"
 
     pro_typ_dic = {
-        "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, op, cost, con, tg, {count}, property)",
-        "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, typ, code, op, cost, con, tg, {count}, property)",
+        "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, op, cost, con, tg, {count}, property, stringid)",
+        "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, typ, code, op, cost, con, tg, {count}, property, stringid)",
         "【永】": "",
     }
 

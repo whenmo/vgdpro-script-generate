@@ -8,7 +8,7 @@
         "手牌": "LOCATION_HAND"
     },
     "typ": {
-        "起": "vgd.EffectTypeIgnition(c, m, %s, op, cost, con, tg, %s, property)",
-        "自": "vgd.EffectTypeTrigger(c, m, %s, typ, code, op, cost, con, tg, %s, property)"
+        "起": "vgd.EffectTypeIgnition(c, m, %s, op, cost, con, tg, %s, property, stringid)",
+        "自": "vgd.EffectTypeTrigger(c, m, %s, typ, code, op, cost, con, tg, %s, property, stringid)"
     }
 }

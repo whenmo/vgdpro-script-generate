@@ -11,6 +11,10 @@ with open(f"data/{DATA['lang']}.json", "r", encoding="utf-8") as file:
     LANG: dict = json.load(file)
 
 
+def Creat_Button(root: tk.Tk, txt: str, func):
+    return tk.Button(root, text=LANG[txt], command=func, width=15)
+
+
 def main():
     # 創建主窗口
     root = tk.Tk()
@@ -24,9 +28,9 @@ def main():
     def load_Generate_File():
         generate.Generate_File(path_txt.get("1.0", "end-1c"), DATA["repeat_decision"])
 
-    tk.Button(
-        root, text=LANG["main.button.generate"], command=load_Generate_File, width=15
-    ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    Creat_Button(root, "main.button.generate", load_Generate_File).grid(
+        row=1, column=0, padx=10, pady=10, sticky="w"
+    )
 
     def select_path(open_method: str):
         """選擇檔案 並以其路徑覆蓋 path_txt (取消選擇則不覆蓋
@@ -39,19 +43,12 @@ def main():
             path_txt.insert("1.0", file_path)
 
     # '選擇檔案'按鈕
-    tk.Button(
-        root,
-        text=LANG["main.button.select_cdb"],
-        command=lambda: select_path("askopenfilename"),
-        width=15,
+    Creat_Button(
+        root, "main.button.select_cdb", lambda: select_path("askopenfilename")
     ).grid(row=1, column=1, padx=10, pady=10, sticky="w")
-
     # '選擇資料夾'按鈕
-    tk.Button(
-        root,
-        text=LANG["main.button.select_file"],
-        command=lambda: select_path("askdirectory"),
-        width=15,
+    Creat_Button(
+        root, "main.button.select_file", lambda: select_path("askdirectory")
     ).grid(row=1, column=2, padx=10, pady=10, sticky="w")
 
     # 重複項目處理 groupbox
@@ -89,14 +86,11 @@ def main():
         DATA["lang"] = "zh_tw" if DATA["lang"] == "zh_cn" else "zh_cn"
         with open("data/data.json", "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        messagebox.showinfo(LANG["message.success"], LANG["main.button.lang_change"])
+        messagebox.showinfo(LANG["message.success"], LANG["message.info.lang_change"])
 
-    tk.Button(
-        root,
-        text="繁體 <-> 简体",
-        command=Lang_Change,
-        width=15,
-    ).grid(row=3, column=2, padx=10, pady=10, sticky="w")
+    Creat_Button(root, "main.button.lang_change", Lang_Change).grid(
+        row=3, column=2, padx=10, pady=10, sticky="w"
+    )
 
     # 啟動主循環
     root.mainloop()
