@@ -1,6 +1,5 @@
-import os
-import sqlite3
-from tkinter import BooleanVar, messagebox
+import os, sqlite3
+from tkinter import messagebox
 from form import Select_Cover
 
 
@@ -68,7 +67,14 @@ def Generate_Lua_File(card: dict):
     return card["cm"] + "\n"
 
 
-def Find_File_Cdb(path: str):
+def Get_Cdb_File(lang: dict, path: str):
+    # chk path
+    if path.endswith(".cdb"):
+        return [path]
+    elif not os.path.isdir(path):
+        messagebox.showerror(lang["message.error"], lang["message.error.not_legal"])
+        return []
+    # get file paths
     cdb_files, find_path = [], False
     path = path.replace("/", "\\")
     try:
@@ -77,33 +83,19 @@ def Find_File_Cdb(path: str):
             if file.endswith(".cdb"):  # 檢查是否為檔案
                 cdb_files.append(os.path.join(path, file))  # 獲取完整路徑
     except FileNotFoundError:
-        messagebox.showerror("錯誤", "指定的目錄不存在")
-        return
+        messagebox.showerror(lang["message.error"], lang["message.error.not_exist"])
     except PermissionError:
-        messagebox.showerror("錯誤", "沒有訪問權限")
-
+        messagebox.showerror(
+            lang["message.error"], lang["message.error.not_permissions"]
+        )
     if find_path and len(cdb_files) == 0:
-        messagebox.showerror("錯誤", "指定的目錄不存在cdb檔案")
+        messagebox.showerror(lang["message.error"], lang["message.error.not_cdb"])
     return cdb_files
 
 
-def Generate_File(txt_component, repeat_item_decision_dic: dict[str, BooleanVar]):
-    path: str = txt_component.get("1.0", "end-1c")
-    # chk path
-    if not (os.path.isdir(path) or path.endswith(".cdb")):
-        messagebox.showerror("錯誤", "指定的路徑不是 cdb 檔案也不是資料夾")
-        return
-
-    # get path cdbs
-    cdb_files: list[str] = [path] if path.endswith(".cdb") else Find_File_Cdb(path)
-
-    # get repeat item decision
-    repeat_item_decision = next(
-        (key for key, var in repeat_item_decision_dic.items() if var.get()), "ask"
-    )
-
+def Generate_File(lang: dict, path: str, repeat_decision: str):
     # load cdbs
-    for cdb_path in cdb_files:
+    for cdb_path in Get_Cdb_File(lang, path):
         # get script_path from cdb_path
         script_path = os.path.join(os.path.dirname(cdb_path), "script")
         if not os.path.exists(script_path):  # 如果資料夾不存在，則創建它
@@ -127,18 +119,20 @@ def Generate_File(txt_component, repeat_item_decision_dic: dict[str, BooleanVar]
         cover_cards: list[dict] = []
         for card in cdb_data:
             # skip chk
-            if repeat_item_decision != "cover" and os.path.exists(card["path"]):
-                if repeat_item_decision != "skip":
+            if repeat_decision != "cover" and os.path.exists(card["path"]):
+                if repeat_decision != "skip":
                     cover_cards.append(card)
                 continue
             # generate file
             show_res += Generate_Lua_File(card)
 
         if len(cover_cards) > 0:
-            for card in Select_Cover(cover_cards):
+            for card in Select_Cover(lang, cover_cards):
                 show_res += Generate_Lua_File(card)
 
         messagebox.showinfo(
-            "成功",
-            f"{script_path}\n已在以上目錄中生成 :\n{show_res}共計 {show_res.count("\n")} 個檔案",
+            lang["message.success"],
+            lang["message.generate_success"]
+            % (script_path, show_res, show_res.count("\n")),
+            # f"{script_path}\n已在以上目錄中生成 :\n{show_res}共計 {show_res.count("\n")} 個檔案",
         )

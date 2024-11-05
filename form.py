@@ -9,12 +9,13 @@ class Item:
         self.card = card
 
 
-def Select_Cover(cards: list[dict]):
+def Select_Cover(lang: dict, cards: list[dict]):
     """創建選擇覆蓋文件面板"""
     root = tk.Tk()
-    root.title("覆蓋文件")
-    info = f"以下檔案已經存在, 勾選要覆蓋的文件"
-    tk.Label(root, text=info).grid(row=0, column=0, padx=10, pady=10, columnspan=10)
+    root.title(lang["form.root.title"])
+    tk.Label(root, text=lang["form.root.info"]).grid(
+        row=0, column=0, padx=10, pady=10, columnspan=10
+    )
 
     next_row = 1
     items_lst: list[list[Item]] = [[]]
@@ -38,10 +39,16 @@ def Select_Cover(cards: list[dict]):
             page_ind.set(ind)
 
         tk.Button(
-            root, text="上一頁", command=lambda: Page_Change(False), width=15
+            root,
+            text=lang["form.button.pre"],
+            command=lambda: Page_Change(False),
+            width=15,
         ).grid(row=next_row, column=0, padx=10, pady=10)
         tk.Button(
-            root, text="下一頁", command=lambda: Page_Change(True), width=15
+            root,
+            text=lang["form.button.next"],
+            command=lambda: Page_Change(True),
+            width=15,
         ).grid(row=next_row, column=1, padx=10, pady=10)
 
         next_row += 1
@@ -73,14 +80,14 @@ def Select_Cover(cards: list[dict]):
 
     tk.Button(
         root,
-        text="當前頁全選",
+        text=lang["form.button.all_select"],
         command=lambda: Change_All(items_lst[page_ind.get()], True),
         width=15,
     ).grid(row=next_row, column=0, padx=10, pady=10)
 
     tk.Button(
         root,
-        text="當前頁全取消",
+        text=lang["form.button.all_cancel"],
         command=lambda: Change_All(items_lst[page_ind.get()], False),
         width=15,
     ).grid(row=next_row, column=1, padx=10, pady=10)
@@ -90,7 +97,7 @@ def Select_Cover(cards: list[dict]):
         root.quit()
         root.destroy()
 
-    tk.Button(root, text="確認", command=Enter, width=15).grid(
+    tk.Button(root, text=lang["form.button.confirm"], command=Enter, width=15).grid(
         row=next_row + 1, column=0, padx=10, pady=10
     )
 
