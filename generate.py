@@ -1,7 +1,7 @@
 import os
 import sqlite3
-from tkinter import messagebox
-from form import Select_Yes_No
+from tkinter import BooleanVar, messagebox
+from form import Select_Cover
 
 
 # 生成 lua
@@ -24,7 +24,10 @@ def Get_Loc(pros: str):
     return _loc[4:] if len(_loc) > 3 else _loc
 
 
-def Get_Pro(pros: str, loc: str, count: str):
+def Get_Pro(pros: str):
+    loc = Get_Loc(pros)
+    count = "1" if "【1回合1次】" in pros else "nil"
+
     pro_typ_dic = {
         "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, op, cost, con, tg, {count}, property)",
         "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, typ, code, op, cost, con, tg, {count}, property)",
@@ -44,35 +47,25 @@ def Get_Line_Lua(line: str):
     _str = ""
     if "：" not in line:
         return _str
-
     pros, eff = line.split("：", 1)
-
-    # get loc
-    loc = Get_Loc(pros)
-
-    # get count
-    count = "1" if "【1回合1次】" in pros else "nil"
-
-    return Get_Pro(pros, loc, count)
+    return Get_Pro(pros)
 
 
-def Get_Lua(name: str, text: str):
+def Generate_Lua_File(card: dict):
+    # get initial
     initial = ""
-    lines = text.split("\n")
-    for i in range(len(lines)):
-        line = lines[i]
+    lines = card["desc"].split("\n")
+    for i, line in enumerate(lines):
         initial += f"\t--{line}\n"
         if i == len(lines) - 1:
             initial += "\n"
         initial += f"\t{Get_Line_Lua(line)}\n"
-
-    return f"""--{name}
-local cm, m, o = GetID()
-function cm.initial_effect(c)
-\tvgf.VgCard(c)
-{initial}end    
-"""
-    # initial 最後有換行符, 因此 end 不換行
+    # generate Lua
+    lua = f"""--{card["name"]}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end"""
+    # generate file
+    with open(card["path"], "w", encoding="utf-8") as lua_file:
+        lua_file.write(lua)
+    return card["cm"] + "\n"
 
 
 def Find_File_Cdb(path: str):
@@ -94,7 +87,7 @@ def Find_File_Cdb(path: str):
     return cdb_files
 
 
-def Generate_File(txt_component):
+def Generate_File(txt_component, repeat_item_decision_dic: dict[str, BooleanVar]):
     path: str = txt_component.get("1.0", "end-1c")
     # chk path
     if not (os.path.isdir(path) or path.endswith(".cdb")):
@@ -104,39 +97,48 @@ def Generate_File(txt_component):
     # get path cdbs
     cdb_files: list[str] = [path] if path.endswith(".cdb") else Find_File_Cdb(path)
 
+    # get repeat item decision
+    repeat_item_decision = next(
+        (key for key, var in repeat_item_decision_dic.items() if var.get()), "ask"
+    )
+
     # load cdbs
     for cdb_path in cdb_files:
-        cdb_data: list[dict] = []
-        # load cdb with cdb_path
-        with sqlite3.connect(cdb_path) as cdb:
-            cdb_cursor = cdb.cursor()
-            cdb_cursor.execute("SELECT * FROM texts;")  # 讀 texts
-            for texts in cdb_cursor.fetchall():
-                cdb_data.append({"id": texts[0], "name": texts[1], "desc": texts[2]})
-
         # get script_path from cdb_path
         script_path = os.path.join(os.path.dirname(cdb_path), "script")
         if not os.path.exists(script_path):  # 如果資料夾不存在，則創建它
             os.makedirs(script_path)
 
-        create_str = ""
-        creats = []
-        for data in cdb_data:
-            cm = f"c{data["id"]}.lua"
-            cm_path = os.path.join(script_path, cm)
-
-            if os.path.exists(cm_path) and Select_Yes_No(
-                f"以下檔案已經存在, 是否跳過\n{cm}"
-            ):
+        # load cdb with cdb_path
+        cdb_data: list[dict] = []
+        with sqlite3.connect(cdb_path) as cdb:
+            cdb_cursor = cdb.cursor()
+            cdb_cursor.execute("SELECT * FROM texts;")  # 讀 texts
+            for texts in cdb_cursor.fetchall():
+                cdb_data.append(
+                    {
+                        "cm": f"c{texts[0]}.lua",
+                        "name": texts[1],
+                        "desc": texts[2],
+                        "path": os.path.join(script_path, f"c{texts[0]}.lua"),
+                    }
+                )
+        show_res = ""
+        cover_cards: list[dict] = []
+        for card in cdb_data:
+            # skip chk
+            if repeat_item_decision != "cover" and os.path.exists(card["path"]):
+                if repeat_item_decision != "skip":
+                    cover_cards.append(card)
                 continue
+            # generate file
+            show_res += Generate_Lua_File(card)
 
-            with open(cm_path, "w", encoding="utf-8") as lua_file:
-                lua_file.write(Get_Lua(data["name"], data["desc"]))
-            create_str += cm + "\n"
-            creats.append(cm)
+        if len(cover_cards) > 0:
+            for card in Select_Cover(cover_cards):
+                show_res += Generate_Lua_File(card)
+
         messagebox.showinfo(
             "成功",
-            f"{script_path}\n已在以上目錄中生成 :\n{create_str}共計 {len(creats)} 個檔案",
+            f"{script_path}\n已在以上目錄中生成 :\n{show_res}共計 {show_res.count("\n")} 個檔案",
         )
-
-    # messagebox.showinfo("成功", "已生成")
