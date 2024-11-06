@@ -3,8 +3,8 @@
     "repeat_decision": "cover",
     "path": "C:/Users/KHUser/Desktop/KoishiPro1/expansions",
     "gnerate_con": "1",
-    "gnerate_cos": "1",
+    "gnerate_cos": "0",
     "gnerate_tg": "1",
-    "gnerate_op": "1",
-    "gnerate_func": "1"
+    "gnerate_op": "0",
+    "gnerate_func": "0"
 }

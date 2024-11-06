@@ -1,20 +1,38 @@
 import tkinter as tk
-from tkinter import messagebox
-from main import LANG, Creat_Button
+import json
+
+
+def Get_Data() -> tuple[dict, dict]:
+    """獲取語言文件 lang 以及全局變數 data"""
+    with open("data/data.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+    with open(f"data/{data['lang']}.json", "r", encoding="utf-8") as file:
+        lang = json.load(file)
+    return lang, data
+
+
+def Creat_Button(root: tk.Tk, txt: str, func) -> tk.Button:
+    """創建按鈕"""
+    lang, data = Get_Data()
+    return tk.Button(root, text=lang[txt], command=func, width=15)
 
 
 class Item:
+    """用於選擇覆蓋文件使用"""
+
     def __init__(self, button: tk.Checkbutton, var: tk.BooleanVar, card: dict):
         self.button = button
         self.var = var
         self.card = card
 
 
-def Select_Cover(cdb_path: str, cards: list[dict]):
+def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
     """創建選擇覆蓋文件面板"""
+    lang, data = Get_Data()
+
     root = tk.Tk()
-    root.title(LANG["form.root.title"])
-    tk.Label(root, text=LANG["form.root.info"] % cdb_path).grid(
+    root.title(lang["form.root.title"])
+    tk.Label(root, text=lang["form.root.info"] % cdb_path).grid(
         row=0, column=0, padx=10, pady=10, columnspan=10
     )
 
