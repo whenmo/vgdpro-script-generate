@@ -10,11 +10,11 @@ class Item:
         self.card = card
 
 
-def Select_Cover(cards: list[dict]):
+def Select_Cover(cdb_path: str, cards: list[dict]):
     """創建選擇覆蓋文件面板"""
     root = tk.Tk()
     root.title(LANG["form.root.title"])
-    tk.Label(root, text=LANG["form.root.info"]).grid(
+    tk.Label(root, text=LANG["form.root.info"] % cdb_path).grid(
         row=0, column=0, padx=10, pady=10, columnspan=10
     )
 
@@ -86,7 +86,7 @@ def Select_Cover(cards: list[dict]):
     Creat_Button(root, "form.button.confirm", Enter).grid(
         row=next_row + 1, column=0, padx=10, pady=10
     )
-    
+
     root.mainloop()
     # 處理返回值
     res_lst = []

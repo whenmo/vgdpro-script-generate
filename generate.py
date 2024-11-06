@@ -1,63 +1,107 @@
-import os, sqlite3, json
+import os, sqlite3, json, re
 from tkinter import messagebox
-from main import LANG
+from main import LANG, DATA
 from form import Select_Cover
 
 
-# 獲取 constant
-def Get_Dic() -> tuple[dict, dict]:
-    with open("data/constant.json", "r", encoding="utf-8") as file:
-        data: dict = json.load(file)
-        loc_dic: dict = data["loc"]
-        typ_dic: dict = data["typ"]
-    return loc_dic, typ_dic
-
-
-loc_dic, typ_dic = Get_Dic()
-
-
 # 生成 lua
+with open("data/constant.json", "r", encoding="utf-8") as file:
+    loc_dic: dict = json.load(file)["loc"]
+
+
 def Get_Loc(pros: str) -> str:
     _loc = [var for key, var in loc_dic.items() if key in pros]
     return "+".join(_loc) if _loc else "nil"
 
 
-def Get_Pro(pros: str):
-    loc = Get_Loc(pros)
-    count = "1" if "【1回合1次】" in pros else "nil"
-
-    pro_typ_dic = {
-        "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, op, cost, con, tg, {count}, property, stringid)",
-        "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, typ, code, op, cost, con, tg, {count}, property, stringid)",
-        "【永】": "",
-    }
-
-    _pro = ""
-    for pro_typ in pro_typ_dic.keys():
-        if pro_typ in pros:
-            _pro = pro_typ_dic[pro_typ]
-
-    return _pro
+def Get_Val(eff: str) -> str:
+    match = re.search(r"[+-]\d+", eff)
+    if match:
+        return int(match.group())
+    return "val"
 
 
-def Get_Line_Lua(line: str):
-    """根據 line(1列 生成 (此處輸出不加縮進以及換行符號"""
+def Get_Line_Lua(eff_count: int, line: str) -> tuple[str, list]:
+    """根據 line(1列 生成 (此處輸出"不加"縮進以及換行符號"""
     _str = ""
     if "：" not in line:
-        return _str
+        return _str, []
     pros, eff = line.split("：", 1)
-    return Get_Pro(pros)
+
+    # get value
+    typ = "EFFECT_TYPE_SINGLE" if "这个单位" in eff else "EFFECT_TYPE_FIELD"
+    loc = Get_Loc(pros)
+    count = "1" if "【1回合1次】" in pros else "nil"
+    val = Get_Val(eff)
+    con = f"cm.con{eff_count}" if DATA["gnerate_con"] == "1" else "nil"
+    cos = f"cm.cos{eff_count}" if DATA["gnerate_cos"] == "1" else "nil"
+    tg = f"cm.tg{eff_count}" if DATA["gnerate_tg"] == "1" else "nil"
+    op = f"cm.op{eff_count}" if DATA["gnerate_op"] == "1" else "nil"
+
+    # set
+    pro_typ_dic = {
+        "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, {op}, {cos}, {con}, {tg}, {count}, property, stringid)",
+        "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, {typ}, code, {op}, {cos}, {con}, {tg}, {count}, property, stringid)",
+    }
+
+    for key, var in pro_typ_dic.items():
+        if key in pros:
+            return var, ["con", "cos", "tg", "op"]
+
+    targetrange_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
+    pro_typ_dic = {
+        # "永": f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, val, con, tg, loc_self, loc_op)",
+        "永力": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {val}, {con}, {tg}{targetrange_chk})",
+        "永盾": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
+        "永暴": f"vgd.EffectTypeContinuousChangeStar(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
+    }
+
+    eff_line = ""
+    if "永" in pros:
+        if "力量" in eff:
+            eff_line += f"{pro_typ_dic["永力"]}\n"
+        if "盾护" in eff:
+            eff_line += f"{pro_typ_dic["永盾"]}\n"
+        if "☆" in eff:
+            eff_line += f"{pro_typ_dic["永暴"]}\n"
+        return eff_line, ["con", "tg"]
+
+    return "", []
+
+
+def Get_Func_Lua(eff_count: int, func_lst: list) -> str:
+    """根據 func_lst 生成 (此處輸出"不加"縮進以及換行符號"""
+    if len(func_lst) == 0:
+        return ""
+    Func_dict = {
+        "con": f"function cm.con{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\treturn\nend",
+        "cos": f"function cm.cos{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
+        "tg": f"function cm.tg{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
+        "op": f"function cm.op{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\nend",
+    }
+    func_line = f"--e{eff_count}"
+    for func in func_lst:
+        func_line += f"\n{Func_dict[func]}"
+
+    return func_line
 
 
 def Generate_Lua_File(card: dict):
     # get initial
-    initial = ""
+    eff_count = 1
+    initial, func = "", ""
     lines: str = card["desc"].split("\n")
     for line in lines:
-        initial += f"\t--{line.strip()}\n"
-        initial += f"\t{Get_Line_Lua(line)}\n"
+        eff_line, func_lst = Get_Line_Lua(eff_count, line)
+        if eff_line.endswith("\n"):
+            eff_line = eff_line[:-1]
+        initial += f"\t--{line.strip()}\n\t{eff_line}\n"
+        if DATA["gnerate_func"] == "1":
+            func += f"{Get_Func_Lua(eff_count, func_lst)}\n"
+        eff_count += 1
+
     # generate Lua
-    lua = f"""--{card["name"]}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end"""
+    lua = f"""--{card["name"]}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end\n{func}"""
     # generate file
     with open(card["path"], "w", encoding="utf-8") as lua_file:
         lua_file.write(lua)
@@ -124,11 +168,11 @@ def Generate_File(path: str, repeat_decision: str):
             show_res += Generate_Lua_File(card)
 
         if len(cover_cards) > 0:
-            for card in Select_Cover(cover_cards):
+            for card in Select_Cover(os.path.basename(cdb_path), cover_cards):
                 show_res += Generate_Lua_File(card)
 
         messagebox.showinfo(
             LANG["message.success"],
             LANG["message.generate_success"]
-            % (script_path, show_res, show_res.count("\n")),
+            % (script_path, os.path.basename(cdb_path), show_res, show_res.count("\n")),
         )
