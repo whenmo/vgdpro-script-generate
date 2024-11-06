@@ -9,7 +9,6 @@
   "main.LabelFrame.func_decision": "是否生成函数名字",
   "main.checkbutton.gnerate_func": "生成函数大纲",
   "main.button.lang_change": "轉繁體",
-  "message.info.lang_change": "重啟以應用字體轉換",
   "message.success": "成功",
   "message.error": "错误",
   "message.error.not_legal": "指定的路径不是 cdb 档案也不是资料夹",

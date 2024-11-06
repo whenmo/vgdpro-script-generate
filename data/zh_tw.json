@@ -9,7 +9,6 @@
   "main.LabelFrame.func_decision": "是否生成函數名字",
   "main.checkbutton.gnerate_func": "生成函數大綱",
   "main.button.lang_change": "转简体",
-  "message.info.lang_change": "重启以应用字体转换",
   "message.success": "成功",
   "message.error": "錯誤",
   "message.error.not_legal": "指定的路徑不是 cdb 檔案也不是資料夾",

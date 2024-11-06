@@ -11,6 +11,14 @@ def Get_Data() -> tuple[dict, dict]:
     return lang, data
 
 
+def Creat_Checkbutton(
+    root: tk.Tk, txt: str, var: tk.BooleanVar, func
+) -> tk.Checkbutton:
+    """創建勾選按鈕"""
+    lang, data = Get_Data()
+    return tk.Checkbutton(root, text=lang[txt], variable=var, command=func)
+
+
 def Creat_Button(root: tk.Tk, txt: str, func) -> tk.Button:
     """創建按鈕"""
     lang, data = Get_Data()
@@ -32,6 +40,8 @@ def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
 
     root = tk.Tk()
     root.title(lang["form.root.title"])
+    root.iconbitmap("data/anyway_is_ico.ico")
+    
     tk.Label(root, text=lang["form.root.info"] % cdb_path).grid(
         row=0, column=0, padx=10, pady=10, columnspan=10
     )

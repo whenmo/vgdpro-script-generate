@@ -141,8 +141,6 @@ def Get_Cdb_File(path: str) -> list[str]:
 
 def Generate_File(path: str) -> None:
     lang, data = Get_Data()
-    messagebox.showinfo(data["gnerate_con"], data["gnerate_cos"])
-    messagebox.showinfo(data["gnerate_tg"], data["gnerate_op"])
     # load cdbs
     for cdb_path in Get_Cdb_File(path):
         # get script_path from cdb_path
