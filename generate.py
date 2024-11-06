@@ -38,33 +38,34 @@ def Get_Line_Lua(eff_count: int, line: str) -> tuple[str, list]:
     tg = f"cm.tg{eff_count}" if DATA["gnerate_tg"] == "1" else "nil"
     op = f"cm.op{eff_count}" if DATA["gnerate_op"] == "1" else "nil"
 
-    # set
+    # 起 / 自
     pro_typ_dic = {
         "【起】": f"vgd.EffectTypeIgnition(c, m, {loc}, {op}, {cos}, {con}, {tg}, {count}, property, stringid)",
         "【自】": f"vgd.EffectTypeTrigger(c, m, {loc}, {typ}, code, {op}, {cos}, {con}, {tg}, {count}, property, stringid)",
     }
-
     for key, var in pro_typ_dic.items():
         if key in pros:
             return var, ["con", "cos", "tg", "op"]
 
+    # 永
     targetrange_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
     pro_typ_dic = {
-        # "永": f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, val, con, tg, loc_self, loc_op)",
+        "永": f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, {val}, {con}, {tg}{targetrange_chk})",
         "永力": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {val}, {con}, {tg}{targetrange_chk})",
         "永盾": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
         "永暴": f"vgd.EffectTypeContinuousChangeStar(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
     }
-
     eff_line = ""
-    if "永" in pros:
+    if "【永】" in pros:
         if "力量" in eff:
             eff_line += f"{pro_typ_dic["永力"]}\n"
         if "盾护" in eff:
             eff_line += f"{pro_typ_dic["永盾"]}\n"
         if "☆" in eff:
             eff_line += f"{pro_typ_dic["永暴"]}\n"
-        return eff_line, ["con", "tg"]
+        if len(eff_line) > 0:
+            return eff_line, ["con", "tg"]
+        return f"{pro_typ_dic["永"]}\n", ["con", "tg"]
 
     return "", []
 
