@@ -1,12 +1,12 @@
 import json
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from form import Get_Data, Creat_Button, Creat_Checkbutton
-from generate import Generate_File
+from form import Get_Globals, Creat_Button, Creat_Checkbutton
+from generate import File_Generation_Manager
 
 if __name__ == "__main__":
     """創建主介面"""
-    lang, data = Get_Data()
+    lang, data = Get_Globals()
     change_config_dict = {}
 
     # 創建主窗口
@@ -29,10 +29,10 @@ if __name__ == "__main__":
 
     # '生成'按鈕
     def load_Generate_File():
-        Generate_File(path_txt.get("1.0", "end-1c"))
+        File_Generation_Manager(path_txt.get("1.0", "end-1c"))
 
     change_config_dict["button.generate"] = Creat_Button(
-        root, "main.button.generate", load_Generate_File
+        root, lang["main.button.generate"], load_Generate_File
     )
     change_config_dict["button.generate"].grid(row=1, column=0, padx=10, pady=10)
 
@@ -48,12 +48,12 @@ if __name__ == "__main__":
 
     # '選擇檔案'按鈕
     change_config_dict["button.select_cdb"] = Creat_Button(
-        root, "main.button.select_cdb", lambda: select_path("askopenfilename")
+        root, lang["main.button.select_cdb"], lambda: select_path("askopenfilename")
     )
     change_config_dict["button.select_cdb"].grid(row=1, column=1, padx=10, pady=10)
     # '選擇資料夾'按鈕
     change_config_dict["button.select_file"] = Creat_Button(
-        root, "main.button.select_file", lambda: select_path("askdirectory")
+        root, lang["main.button.select_file"], lambda: select_path("askdirectory")
     )
     change_config_dict["button.select_file"].grid(row=1, column=2, padx=10, pady=10)
 
@@ -113,26 +113,26 @@ if __name__ == "__main__":
         repeat_decision_dict[key] = tk.BooleanVar(value=data["repeat_decision"] == key)
         checkbutton = Creat_Checkbutton(
             change_config_dict["LabelFrame.repeat_decision"],
-            "main.checkbutton." + key,
+            lang["main.checkbutton." + key],
             repeat_decision_dict[key],
             lambda k=key: Select_File_Decision(k),
         )
         checkbutton.grid(row=row, column=0)
         change_config_dict["checkbutton." + key] = checkbutton
-        
+
     # 字體轉換
     def Lang_Change():
-        lang, data = Get_Data()
+        lang, data = Get_Globals()
         data["lang"] = "zh_tw" if data["lang"] == "zh_cn" else "zh_cn"
         with open("data/data.json", "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        lang, data = Get_Data()
+        lang, data = Get_Globals()
         # 改語言
         root.title(lang["main.root.title"])
         for key, item in change_config_dict.items():
             item.config(text=lang["main." + key])
 
-    button_lang_change = Creat_Button(root, "main.button.lang_change", Lang_Change)
+    button_lang_change = Creat_Button(root, lang["main.button.lang_change"], Lang_Change)
     button_lang_change.grid(row=3, column=2, padx=10, pady=10, sticky="n")
     change_config_dict["button.lang_change"] = button_lang_change
 

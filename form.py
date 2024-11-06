@@ -1,9 +1,9 @@
 import tkinter as tk
-import json
+import json, os
 
 
-def Get_Data() -> tuple[dict, dict]:
-    """獲取語言文件 lang 以及全局變數 data"""
+def Get_Globals() -> tuple[dict, dict]:
+    """更新語言文件 LANG 以及全局變數 DATA"""
     with open("data/data.json", "r", encoding="utf-8") as file:
         data = json.load(file)
     with open(f"data/{data['lang']}.json", "r", encoding="utf-8") as file:
@@ -11,37 +11,40 @@ def Get_Data() -> tuple[dict, dict]:
     return lang, data
 
 
-def Creat_Checkbutton(
-    root: tk.Tk, txt: str, var: tk.BooleanVar, func
-) -> tk.Checkbutton:
+def Creat_Checkbutton(root: tk.Tk, txt: str, var, func="") -> tk.Checkbutton:
     """創建勾選按鈕"""
-    lang, data = Get_Data()
-    return tk.Checkbutton(root, text=lang[txt], variable=var, command=func)
+    return tk.Checkbutton(root, text=txt, variable=var, command=func)
 
 
-def Creat_Button(root: tk.Tk, txt: str, func) -> tk.Button:
+def Creat_Button(root: tk.Tk, txt: str, func="") -> tk.Button:
     """創建按鈕"""
-    lang, data = Get_Data()
-    return tk.Button(root, text=lang[txt], command=func, width=15)
+    return tk.Button(root, text=txt, command=func, width=15)
+
+
+class Card:
+    def __init__(self, texts: list[str], script_path: str):
+        self.cm = f"c{texts[0]}.lua"
+        self.name = texts[1]
+        self.desc = texts[2]
+        self.path = os.path.join(script_path, f"c{texts[0]}.lua")
 
 
 class Item:
     """用於選擇覆蓋文件使用"""
 
-    def __init__(self, button: tk.Checkbutton, var: tk.BooleanVar, card: dict):
+    def __init__(self, button: tk.Checkbutton, var: tk.BooleanVar, card: Card):
         self.button = button
         self.var = var
         self.card = card
 
 
-def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
+def Select_Cover_Form(cdb_path: str, cards: list[Card]) -> list[Card]:
     """創建選擇覆蓋文件面板"""
-    lang, data = Get_Data()
-
+    lang, _ = Get_Globals()
     root = tk.Tk()
     root.title(lang["form.root.title"])
     root.iconbitmap("data/anyway_is_ico.ico")
-    
+
     tk.Label(root, text=lang["form.root.info"] % cdb_path).grid(
         row=0, column=0, padx=10, pady=10, columnspan=10
     )
@@ -66,19 +69,19 @@ def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
 
             page_ind.set(ind)
 
-        Creat_Button(root, "form.button.pre", lambda: Page_Change(False)).grid(
+        Creat_Button(root, lang["form.button.pre"], lambda: Page_Change(False)).grid(
             row=next_row, column=0, padx=10, pady=10
         )
-        Creat_Button(root, "form.button.next", lambda: Page_Change(True)).grid(
+        Creat_Button(root, lang["form.button.next"], lambda: Page_Change(True)).grid(
             row=next_row, column=1, padx=10, pady=10
         )
         next_row += 1
 
     # 創建勾選框
     for card in cards:
-        info = f"{card["cm"]} : {card["name"]}"
+        info = f"{card.cm} : {card.name}"
         check_var = tk.BooleanVar(value=False)
-        check_button = tk.Checkbutton(root, text=info, variable=check_var)
+        check_button = Creat_Checkbutton(root, info, check_var)
         if len(items_lst[-1]) == 20:
             items_lst.append([])
 
@@ -99,10 +102,10 @@ def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
 
     next_row += 1 + min(len(items_lst[0]), 10)
 
-    Creat_Button(root, "form.button.all_select", lambda: Change_All(True)).grid(
+    Creat_Button(root, lang["form.button.all_select"], lambda: Change_All(True)).grid(
         row=next_row, column=0, padx=10, pady=10
     )
-    Creat_Button(root, "form.button.all_cancel", lambda: Change_All(False)).grid(
+    Creat_Button(root, lang["form.button.all_cancel"], lambda: Change_All(False)).grid(
         row=next_row, column=1, padx=10, pady=10
     )
 
@@ -111,7 +114,7 @@ def Select_Cover_Form(cdb_path: str, cards: list[dict]) -> list[dict]:
         root.quit()
         root.destroy()
 
-    Creat_Button(root, "form.button.confirm", Enter).grid(
+    Creat_Button(root, lang["form.button.confirm"], Enter).grid(
         row=next_row + 1, column=0, padx=10, pady=10
     )
 

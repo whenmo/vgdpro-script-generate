@@ -1,23 +1,129 @@
 import os, sqlite3, json, re
 from tkinter import messagebox
-from form import Select_Cover_Form, Get_Data
+from form import Select_Cover_Form, Get_Globals, Card
 
-
-# 生成 lua
 with open("data/constant.json", "r", encoding="utf-8") as file:
     loc_dic: dict = json.load(file)["loc"]
 
 
-def Get_Loc(pros: str) -> str:
-    _loc = [var for key, var in loc_dic.items() if key in pros]
-    return "+".join(_loc) if _loc else "nil"
+def File_Generation_Manager(path: str) -> None:
+    """根據路徑讀取並生成檔案"""
+    lang, data = Get_Globals()
+    # get paths
+    script_path, cdb_paths = Get_Paths(path)
+    os.makedirs(script_path, exist_ok=True)
+    # load cdbs
+    for cdb_path in cdb_paths:
+        # ganerate
+        show_res: str = ""
+        cover_cards: list[Card] = []
+        not_cover: bool = data["repeat_decision"] != "cover"
+        not_skip: bool = data["repeat_decision"] != "skip"
+        for card in Load_Cdb_Data(script_path, cdb_path):
+            # skip chk
+            if not_cover and os.path.exists(card.path):
+                if not_skip:
+                    cover_cards.append(card)
+                continue
+            # generate file
+            show_res += Generate_Lua_File(card)
+
+        if cover_cards:
+            for card in Select_Cover_Form(os.path.basename(cdb_path), cover_cards):
+                show_res += Generate_Lua_File(card)
+
+        messagebox.showinfo(
+            lang["message.success"],
+            lang["message.generate_success"]
+            % (script_path, os.path.basename(cdb_path), show_res, show_res.count("\n")),
+        )
 
 
-def Get_Val(eff: str) -> str:
-    match = re.search(r"[+-]\d+", eff)
-    if match:
-        return int(match.group())
-    return "val"
+def Get_Paths(path: str) -> tuple[str, list[str]]:
+    """獲取 script 絕對路徑以及 cdb 絕對路徑列表"""
+    lang, _ = Get_Globals()
+    # 路徑是 .cdb 文件
+    if path.endswith(".cdb"):
+        return os.path.join(os.path.dirname(path), "script"), [path]
+    # 路徑不是合法目錄
+    if not os.path.isdir(path):
+        messagebox.showerror(lang["message.error"], lang["message.not_legal"])
+        return "", []
+    # 初始化空列表，替換 Windows 路徑分隔符
+    cdb_paths = []
+    path = path.replace("/", "\\")
+    try:
+        cdb_paths = [
+            os.path.join(path, file)
+            for file in os.listdir(path)
+            if file.endswith(".cdb")
+        ]
+    except FileNotFoundError:
+        messagebox.showerror(lang["message.error"], lang["message.not_exist"])
+    except PermissionError:
+        messagebox.showerror(lang["message.error"], lang["message.not_permissions"])
+    if not cdb_paths:
+        messagebox.showerror(lang["message.error"], lang["message.not_cdb"])
+
+    return os.path.join(path, "script"), cdb_paths
+
+
+def Load_Cdb_Data(script_path: str, cdb_path: str) -> list[Card]:
+    """加載 cdb 文件中的數據"""
+    lang, _ = Get_Globals()
+    cdb_data: list[Card] = []
+    try:
+        with sqlite3.connect(cdb_path) as cdb:
+            cdb_cursor = cdb.cursor()
+            cdb_cursor.execute("SELECT * FROM texts;")
+            cdb_data = [Card(texts, script_path) for texts in cdb_cursor.fetchall()]
+    except Exception as e:
+        messagebox.showerror(
+            lang["message.error"],
+            lang["message.cdb_load_failed"] % os.path.basename(cdb_path),
+        )
+    return cdb_data
+
+
+def Generate_Lua_File(card: Card) -> str:
+    """生成 lua 文件並返回生成文件名"""
+    _, data = Get_Globals()
+    # get initial
+    eff_count = 1
+    initial, func = "", ""
+    lines: str = card.desc.split("\n")
+    for line in lines:
+        eff_line, func_lst = Get_Line_Lua(data, eff_count, line)
+        if eff_line.endswith("\n"):
+            eff_line = eff_line[:-1]
+        initial += f"\t--{line.strip()}\n\t{eff_line}\n"
+        if data["gnerate_func"] == "1":
+            func += f"{Get_Func_Lua(eff_count, func_lst)}\n"
+        eff_count += 1
+
+    # generate Lua
+    lua = f"""--{card.name}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end\n{func}"""
+    # generate file
+    with open(card.path, "w", encoding="utf-8") as lua_file:
+        lua_file.write(lua)
+    return card.cm + "\n"
+
+
+def Get_Func_Lua(eff_count: int, func_lst: list) -> str:
+    """根據 func_lst 生成 (此處輸出"不加"縮進以及換行符號"""
+    if len(func_lst) == 0:
+        return ""
+    Func_dict = {
+        "con": f"function cm.con{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\treturn\nend",
+        "cos": f"function cm.cos{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
+        "tg": f"function cm.tg{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
+        "op": f"function cm.op{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\nend",
+    }
+    func_line = f"--e{eff_count}"
+    for func in func_lst:
+        func_line += f"\n{Func_dict[func]}"
+
+    return func_line
 
 
 def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list]:
@@ -72,114 +178,13 @@ def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list]:
     return "", []
 
 
-def Get_Func_Lua(data: dict, eff_count: int, func_lst: list) -> str:
-    """根據 func_lst 生成 (此處輸出"不加"縮進以及換行符號"""
-    if len(func_lst) == 0:
-        return ""
-    Func_dict = {
-        "con": f"function cm.con{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\treturn\nend",
-        "cos": f"function cm.cos{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
-        "tg": f"function cm.tg{eff_count}(e,tp,eg,ep,ev,re,r,rp,chk)\n\tif chk==0 then return end\n\nend",
-        "op": f"function cm.op{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\nend",
-    }
-    func_line = f"--e{eff_count}"
-    for func in func_lst:
-        func_line += f"\n{Func_dict[func]}"
-
-    return func_line
+def Get_Loc(pros: str) -> str:
+    _loc = [var for key, var in loc_dic.items() if key in pros]
+    return "+".join(_loc) if _loc else "nil"
 
 
-def Generate_Lua_File(card: dict) -> str:
-    lang, data = Get_Data()
-    # get initial
-    eff_count = 1
-    initial, func = "", ""
-    lines: str = card["desc"].split("\n")
-    for line in lines:
-        eff_line, func_lst = Get_Line_Lua(data, eff_count, line)
-        if eff_line.endswith("\n"):
-            eff_line = eff_line[:-1]
-        initial += f"\t--{line.strip()}\n\t{eff_line}\n"
-        if data["gnerate_func"] == "1":
-            func += f"{Get_Func_Lua(data, eff_count, func_lst)}\n"
-        eff_count += 1
-
-    # generate Lua
-    lua = f"""--{card["name"]}\nlocal cm, m, o = GetID()\nfunction cm.initial_effect(c)\n\tvgf.VgCard(c)\n{initial}end\n{func}"""
-    # generate file
-    with open(card["path"], "w", encoding="utf-8") as lua_file:
-        lua_file.write(lua)
-    return card["cm"] + "\n"
-
-
-def Get_Cdb_File(path: str) -> list[str]:
-    lang, data = Get_Data()
-    # chk path
-    if path.endswith(".cdb"):
-        return [path]
-    elif not os.path.isdir(path):
-        messagebox.showerror(lang["message.error"], lang["message.error.not_legal"])
-        return []
-    # get file paths
-    cdb_files, find_path = [], False
-    path = path.replace("/", "\\")
-    try:
-        for file in os.listdir(path):
-            find_path = True
-            if file.endswith(".cdb"):  # 檢查是否為檔案
-                cdb_files.append(os.path.join(path, file))  # 獲取完整路徑
-    except FileNotFoundError:
-        messagebox.showerror(lang["message.error"], lang["message.error.not_exist"])
-    except PermissionError:
-        messagebox.showerror(
-            lang["message.error"], lang["message.error.not_permissions"]
-        )
-    if find_path and len(cdb_files) == 0:
-        messagebox.showerror(lang["message.error"], lang["message.error.not_cdb"])
-    return cdb_files
-
-
-def Generate_File(path: str) -> None:
-    lang, data = Get_Data()
-    # load cdbs
-    for cdb_path in Get_Cdb_File(path):
-        # get script_path from cdb_path
-        script_path = os.path.join(os.path.dirname(cdb_path), "script")
-        if not os.path.exists(script_path):  # 如果資料夾不存在，則創建它
-            os.makedirs(script_path)
-
-        # load cdb with cdb_path
-        cdb_data: list[dict] = []
-        with sqlite3.connect(cdb_path) as cdb:
-            cdb_cursor = cdb.cursor()
-            cdb_cursor.execute("SELECT * FROM texts;")  # 讀 texts
-            for texts in cdb_cursor.fetchall():
-                cdb_data.append(
-                    {
-                        "cm": f"c{texts[0]}.lua",
-                        "name": texts[1],
-                        "desc": texts[2],
-                        "path": os.path.join(script_path, f"c{texts[0]}.lua"),
-                    }
-                )
-        show_res: str = ""
-        cover_cards: list[dict] = []
-        repeat_decision: str = data["repeat_decision"]
-        for card in cdb_data:
-            # skip chk
-            if repeat_decision != "cover" and os.path.exists(card["path"]):
-                if repeat_decision != "skip":
-                    cover_cards.append(card)
-                continue
-            # generate file
-            show_res += Generate_Lua_File(card)
-
-        if len(cover_cards) > 0:
-            for card in Select_Cover_Form(os.path.basename(cdb_path), cover_cards):
-                show_res += Generate_Lua_File(card)
-
-        messagebox.showinfo(
-            lang["message.success"],
-            lang["message.generate_success"]
-            % (script_path, os.path.basename(cdb_path), show_res, show_res.count("\n")),
-        )
+def Get_Val(eff: str) -> str:
+    match = re.search(r"[+-]\d+", eff)
+    if match:
+        return int(match.group())
+    return "val"
