@@ -135,10 +135,10 @@ def Get_Func_Lua(data: dict, eff_count: int, funcs: list[str]) -> str:
 def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list[str]]:
     """根據 line(1列 生成 (此處輸出"不加"縮進以及換行符號"""
     empty_str = ""
-    # 【超限舞装】
-    if line.startswith("【超限舞装】-"):
-        return "vgd.OverDress(c, code_or_func)", empty_str
-    # is effect model
+    # 特殊關鍵字 檢測
+    if eff_line := Keyword_Ckeck(line):
+        return eff_line, empty_str
+    # 無特殊關鍵字
     if "：" not in line:
         return empty_str, empty_str
     pros, eff = line.split("：", 1)
@@ -146,7 +146,6 @@ def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list[str]]
     typ = "EFFECT_TYPE_SINGLE" if "这个单位" in eff else "EFFECT_TYPE_FIELD"
     loc = Get_Loc(pros)
     count = "1" if "【1回合1次】" in pros else "nil"
-    val = Get_Val(eff)
     con, cos, tg, op = Get_Func(eff_count, data, eff)
 
     # 起 / 自
@@ -159,43 +158,37 @@ def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list[str]]
             return var, Get_Func_Lua(data, eff_count, [con, cos, tg, op])
 
     # 永
-    targetrange_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
-    pro_typ_dic = {
-        "永": f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, {val}, {con}, {tg}{targetrange_chk})",
-        "永力": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {val}, {con}, {tg}{targetrange_chk})",
-        "永盾": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
-        "永暴": f"vgd.EffectTypeContinuousChangeStar(c, m, {typ}, {val}, {con}, {tg}{targetrange_chk})",
-    }
-    eff_line = ""
     if "【永】" in pros:
-        if "力量" in eff:
-            eff_line += f"{pro_typ_dic["永力"]}\n"
-        if "盾护" in eff:
-            eff_line += f"{pro_typ_dic["永盾"]}\n"
-        if "☆" in eff:
-            eff_line += f"{pro_typ_dic["永暴"]}\n"
-        if len(eff_line) > 0:
-            return eff_line, Get_Func_Lua(data, eff_count, [con, tg])
-
-        return f"{pro_typ_dic["永"]}\n", Get_Func_Lua(data, eff_count, [con, tg])
+        func_line = Get_Func_Lua(data, eff_count, [con, tg])
+        return Get_Continuous(eff, loc, typ, con, tg), func_line
 
     return empty_str, empty_str
 
 
+def Keyword_Ckeck(line: str) -> str:
+    if line.startswith("【超限舞装】-"):
+        return "vgd.OverDress(c, code_or_func)"
+    elif line.startswith("【交织超限舞装】-"):
+        return "vgd.XOverDress(c, code_or_func)"
+    elif line.startswith("舞装加身-"):
+        return "vgd.DressUp(c,code)"
+    elif line.startswith("【反抗舞装】-"):
+        return " "
+    elif line.startswith("【协奏舞装】-"):
+        return " "
+    return ""
+
+
 def Get_Loc(pros: str) -> str:
-    _loc = [var for key, var in loc_dic.items() if key in pros]
-    return "+".join(_loc) if _loc else "nil"
-
-
-def Get_Val(eff: str) -> str:
-    match = re.search(r"[+-]\d+", eff)
-    if match:
-        return int(match.group())
-    return "val"
+    locs_lst: list = re.findall(r"\【(.*?)\】", pros)
+    locs: str = locs_lst[-2] if locs_lst[-1] == "1回合1次" else locs_lst[-1]
+    locs_lst = locs.split("/")
+    locs = [loc_dic[loc] for loc in locs_lst if loc in loc_dic]
+    return "+".join(locs) if locs else "nil"
 
 
 def Get_Func(eff_count: int, data: dict, eff: str) -> tuple[str, str, str, str]:
-    eff = eff.split('。')[0]
+    eff = eff.split("。")[0]
     con = f"cm.con{eff_count}" if data["gnerate_con"] == "1" else "nil"
     cos = Get_Cos(eff_count, data["gnerate_cos"] == "1", eff)
     tg = f"cm.tg{eff_count}" if data["gnerate_tg"] == "1" else "nil"
@@ -205,8 +198,7 @@ def Get_Func(eff_count: int, data: dict, eff: str) -> tuple[str, str, str, str]:
 
 def Get_Cos(eff_count: int, chk: bool, eff: str) -> str:
     default_cos = f"cm.cos{eff_count}"
-    match = re.search(r"【费用】\[(.*?)\]", eff)
-    if not match:
+    if not (match := re.search(r"【费用】\[(.*?)\]", eff)):
         return default_cos if chk else "nil"
     cos_lst = []
     for cost in match.group(1).split("，"):
@@ -220,11 +212,26 @@ def Get_Cos(eff_count: int, chk: bool, eff: str) -> str:
             continue
         find = False
         for key, cosf in cos_dic.items():
-            num_match = re.search(r"\d+", cost)
-            if key in cost and num_match:
-                cos_lst.append(cosf % num_match.group(0))
+            if key in cost and (match_num := re.search(r"\d+", cost)):
+                cos_lst.append(cosf % match_num.group(0))
                 find = True
                 break
         if not (default_cos in cos_lst or find):
             cos_lst.append(default_cos)
     return cos_lst[0] if len(cos_lst) == 1 else f"vgf.CostAnd({",".join(cos_lst)})"
+
+
+def Get_Continuous(eff: str, loc: str, typ: str, con: str, tg: str):
+    def Get_Val(key: str) -> str:
+        match = re.search(rf"{key}([^\d\+\-]*[\d\+\-]*\d+)", eff)
+        return int(match.group(1)) if match else "val"
+
+    target_range_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
+    continuous_dic = {
+        "力量": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {Get_Val("力量")}, {con}, {tg}{target_range_chk})\n",
+        "盾护": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {Get_Val("盾护")}, {con}, {tg}{target_range_chk})\n",
+        "☆": f"vgd.EffectTypeContinuousChangeStar(c, m,{typ}, {Get_Val("☆")}, {con}, {tg}{target_range_chk})\n",
+    }
+    if eff_line := "".join(continuous_dic[key] for key in continuous_dic if key in eff):
+        return eff_line
+    return f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, val, {con}, {tg}{target_range_chk})\n"
