@@ -16,21 +16,22 @@ def File_Generation_Manager(path: str) -> None:
     for cdb_path in cdb_paths:
         # ganerate
         show_res: str = ""
-        cover_cards: list[Card] = []
-        not_cover: bool = data["repeat_decision"] != "cover"
-        not_skip: bool = data["repeat_decision"] != "skip"
+        repeat_cards: list[Card] = []
         for card in Load_Cdb_Data(script_path, cdb_path):
             # skip chk
-            if not_cover and os.path.exists(card.path):
-                if not_skip:
-                    cover_cards.append(card)
-                continue
-            # generate file
-            show_res += Generate_Lua_File(card)
+            if os.path.exists(card.path):
+                repeat_cards.append(card)
+            else:
+                # generate file
+                show_res += f"{Generate_Lua_File(card)}\n"
 
-        if cover_cards:
-            for card in Select_Cover_Form(os.path.basename(cdb_path), cover_cards):
-                show_res += Generate_Lua_File(card)
+        if repeat_cards and data["repeat_decision"] != "skip":
+            if data["repeat_decision"] != "cover":
+                repeat_cards = Select_Cover_Form(
+                    os.path.basename(cdb_path), repeat_cards
+                )
+            for card in repeat_cards:
+                show_res += f"{Generate_Lua_File(card)}\n"
 
         messagebox.showinfo(
             lang["message.success"],
@@ -106,7 +107,7 @@ def Generate_Lua_File(card: Card) -> str:
     # generate file
     with open(card.path, "w", encoding="utf-8") as lua_file:
         lua_file.write(lua)
-    return card.cm + "\n"
+    return card.cm
 
 
 def Get_Func_Lua(eff_count: int, func_lst: list) -> str:

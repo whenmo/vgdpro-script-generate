@@ -38,14 +38,14 @@ class Item:
         self.card = card
 
 
-def Select_Cover_Form(cdb_path: str, cards: list[Card]) -> list[Card]:
+def Select_Cover_Form(cdb_name: str, cards: list[Card]) -> list[Card]:
     """創建選擇覆蓋文件面板"""
     lang, _ = Get_Globals()
     root = tk.Tk()
     root.title(lang["form.root.title"])
     root.iconbitmap("data/anyway_is_ico.ico")
 
-    tk.Label(root, text=lang["form.root.info"] % cdb_path).grid(
+    tk.Label(root, text=lang["form.root.info"] % cdb_name).grid(
         row=0, column=0, padx=10, pady=10, columnspan=10
     )
 
