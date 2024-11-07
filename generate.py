@@ -3,7 +3,9 @@ from tkinter import messagebox
 from form import Select_Cover_Form, Get_Globals, Card
 
 with open("data/constant.json", "r", encoding="utf-8") as file:
-    loc_dic: dict = json.load(file)["loc"]
+    data = json.load(file)
+    loc_dic: dict = data["loc"]
+    cos_dic: dict = data["cos"]
 
 
 def File_Generation_Manager(path: str) -> None:
@@ -94,12 +96,12 @@ def Generate_Lua_File(card: Card) -> str:
     initial, func = "", ""
     lines: str = card.desc.split("\n")
     for line in lines:
-        eff_line, func_lst = Get_Line_Lua(data, eff_count, line)
+        eff_line, func_line = Get_Line_Lua(data, eff_count, line)
         if eff_line.endswith("\n"):
             eff_line = eff_line[:-1]
         initial += f"\t--{line.strip()}\n\t{eff_line}\n"
-        if data["gnerate_func"] == "1":
-            func += f"{Get_Func_Lua(eff_count, func_lst)}\n"
+        if func_line and data["gnerate_func"] == "1":
+            func += f"{func_line}\n"
         eff_count += 1
 
     # generate Lua
@@ -110,9 +112,13 @@ def Generate_Lua_File(card: Card) -> str:
     return card.cm
 
 
-def Get_Func_Lua(eff_count: int, func_lst: list) -> str:
+def Get_Func_Lua(data: dict, eff_count: int, funcs: list[str]) -> str:
     """根據 func_lst 生成 (此處輸出"不加"縮進以及換行符號"""
-    if len(func_lst) == 0:
+    funcs = [
+        match.group(1) for func in funcs if (match := re.match(r"cm\.(\w+).\d*", func))
+    ]
+    funcs = [func for func in funcs if data[f"gnerate_{func}"] == "1"]
+    if not funcs:
         return ""
     Func_dict = {
         "con": f"function cm.con{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\treturn\nend",
@@ -121,31 +127,27 @@ def Get_Func_Lua(eff_count: int, func_lst: list) -> str:
         "op": f"function cm.op{eff_count}(e,tp,eg,ep,ev,re,r,rp)\n\nend",
     }
     func_line = f"--e{eff_count}"
-    for func in func_lst:
+    for func in funcs:
         func_line += f"\n{Func_dict[func]}"
-
     return func_line
 
 
-def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list]:
+def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list[str]]:
     """根據 line(1列 生成 (此處輸出"不加"縮進以及換行符號"""
-    _str = ""
+    empty_str = ""
+    # 【超限舞装】
+    if line.startswith("【超限舞装】-"):
+        return "vgd.OverDress(c, code_or_func)", empty_str
+    # is effect model
     if "：" not in line:
-        return _str, []
+        return empty_str, empty_str
     pros, eff = line.split("：", 1)
-
     # get value
     typ = "EFFECT_TYPE_SINGLE" if "这个单位" in eff else "EFFECT_TYPE_FIELD"
     loc = Get_Loc(pros)
     count = "1" if "【1回合1次】" in pros else "nil"
     val = Get_Val(eff)
-    con = f"cm.con{eff_count}" if data["gnerate_con"] == "1" else "nil"
-    cos = f"cm.cos{eff_count}" if data["gnerate_cos"] == "1" else "nil"
-    tg = f"cm.tg{eff_count}" if data["gnerate_tg"] == "1" else "nil"
-    op = f"cm.op{eff_count}" if data["gnerate_op"] == "1" else "nil"
-
-    def Set_Func_Lst(*funcs: str) -> list[str]:
-        return [func for func in funcs if data["gnerate_" + func] == "1"]
+    con, cos, tg, op = Get_Func(eff_count, data, eff)
 
     # 起 / 自
     pro_typ_dic = {
@@ -154,7 +156,7 @@ def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list]:
     }
     for key, var in pro_typ_dic.items():
         if key in pros:
-            return var, Set_Func_Lst("con", "cos", "tg", "op")
+            return var, Get_Func_Lua(data, eff_count, [con, cos, tg, op])
 
     # 永
     targetrange_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
@@ -173,10 +175,11 @@ def Get_Line_Lua(data: dict, eff_count: int, line: str) -> tuple[str, list]:
         if "☆" in eff:
             eff_line += f"{pro_typ_dic["永暴"]}\n"
         if len(eff_line) > 0:
-            return eff_line, Set_Func_Lst("con", "tg")
-        return f"{pro_typ_dic["永"]}\n", Set_Func_Lst("con", "tg")
+            return eff_line, Get_Func_Lua(data, eff_count, [con, tg])
 
-    return "", []
+        return f"{pro_typ_dic["永"]}\n", Get_Func_Lua(data, eff_count, [con, tg])
+
+    return empty_str, empty_str
 
 
 def Get_Loc(pros: str) -> str:
@@ -189,3 +192,39 @@ def Get_Val(eff: str) -> str:
     if match:
         return int(match.group())
     return "val"
+
+
+def Get_Func(eff_count: int, data: dict, eff: str) -> tuple[str, str, str, str]:
+    eff = eff.split('。')[0]
+    con = f"cm.con{eff_count}" if data["gnerate_con"] == "1" else "nil"
+    cos = Get_Cos(eff_count, data["gnerate_cos"] == "1", eff)
+    tg = f"cm.tg{eff_count}" if data["gnerate_tg"] == "1" else "nil"
+    op = f"cm.op{eff_count}" if data["gnerate_op"] == "1" else "nil"
+    return con, cos, tg, op
+
+
+def Get_Cos(eff_count: int, chk: bool, eff: str) -> str:
+    default_cos = f"cm.cos{eff_count}"
+    match = re.search(r"【费用】\[(.*?)\]", eff)
+    if not match:
+        return default_cos if chk else "nil"
+    cos_lst = []
+    for cost in match.group(1).split("，"):
+        if "横置" in cost:
+            cos_lst.append("vgf.ChangePosDefence()")
+            continue
+        if "退场" in cost:
+            leave_filter = cost[1:-2]
+            leave_filter = "" if leave_filter == "这个单位" else leave_filter
+            cos_lst.append("vgf.LeaveFieldCost(%s)" % leave_filter)
+            continue
+        find = False
+        for key, cosf in cos_dic.items():
+            num_match = re.search(r"\d+", cost)
+            if key in cost and num_match:
+                cos_lst.append(cosf % num_match.group(0))
+                find = True
+                break
+        if not (default_cos in cos_lst or find):
+            cos_lst.append(default_cos)
+    return cos_lst[0] if len(cos_lst) == 1 else f"vgf.CostAnd({",".join(cos_lst)})"

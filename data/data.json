@@ -1,10 +1,10 @@
 {
     "lang": "zh_cn",
-    "repeat_decision": "ask",
-    "path": "C:/Users/KHUser/Desktop/KoishiPro1/expansions",
+    "repeat_decision": "cover",
+    "path": "C:/Users/KHUser/Desktop/KoishiPro1/expansions/SD01.cdb",
     "gnerate_con": "1",
     "gnerate_cos": "1",
-    "gnerate_tg": "1",
+    "gnerate_tg": "0",
     "gnerate_op": "1",
     "gnerate_func": "1"
 }
