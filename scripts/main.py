@@ -1,12 +1,13 @@
 import json
 import tkinter as tk
-from tkinter import filedialog, messagebox
-from form import Get_Globals, Creat_Button, Creat_Checkbutton
+import self_library as lib
+from tkinter import filedialog
 from generate import File_Generation_Manager
+from form_find_func import Find_Func_Form
 
 if __name__ == "__main__":
     """創建主介面"""
-    lang, data = Get_Globals()
+    lang, data = lib.Get_Globals()
     change_config_dict = {}
 
     # 創建主窗口
@@ -15,12 +16,13 @@ if __name__ == "__main__":
     root.iconbitmap("data/anyway_is_ico.ico")
 
     # 路徑 txt
-    def Save_Path(event):
-        if path_txt.edit_modified():
-            path_txt.edit_modified(False)
-            data["path"] = path_txt.get("1.0", "end-1c")
-            with open("data/data.json", "w", encoding="utf-8") as file:
-                json.dump(data, file, ensure_ascii=False, indent=4)
+    def Save_Path(event: tk.Event):
+        if not path_txt.edit_modified():
+            return
+        path_txt.edit_modified(False)
+        data["path"] = path_txt.get("1.0", "end-1c")
+        with open("data/data.json", "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
 
     path_txt = tk.Text(root, width=60, height=1)
     path_txt.grid(row=0, column=0, padx=10, pady=10, columnspan=3)
@@ -31,7 +33,7 @@ if __name__ == "__main__":
     def load_Generate_File():
         File_Generation_Manager(path_txt.get("1.0", "end-1c"))
 
-    change_config_dict["button.generate"] = Creat_Button(
+    change_config_dict["button.generate"] = lib.Creat_Button(
         root, lang["main.button.generate"], load_Generate_File
     )
     change_config_dict["button.generate"].grid(row=1, column=0, padx=10, pady=10)
@@ -47,12 +49,12 @@ if __name__ == "__main__":
             path_txt.insert("1.0", file_path)
 
     # '選擇檔案'按鈕
-    change_config_dict["button.select_cdb"] = Creat_Button(
+    change_config_dict["button.select_cdb"] = lib.Creat_Button(
         root, lang["main.button.select_cdb"], lambda: select_path("askopenfilename")
     )
     change_config_dict["button.select_cdb"].grid(row=1, column=1, padx=10, pady=10)
     # '選擇資料夾'按鈕
-    change_config_dict["button.select_file"] = Creat_Button(
+    change_config_dict["button.select_file"] = lib.Creat_Button(
         root, lang["main.button.select_file"], lambda: select_path("askdirectory")
     )
     change_config_dict["button.select_file"].grid(row=1, column=2, padx=10, pady=10)
@@ -61,7 +63,7 @@ if __name__ == "__main__":
     group_func_decision = tk.LabelFrame(
         root, text=lang["main.LabelFrame.func_decision"], padx=10, pady=10
     )
-    group_func_decision.grid(row=3, column=0, padx=10, pady=10, sticky="n")
+    group_func_decision.grid(row=3, column=0, padx=10, pady=10, sticky="n", rowspan=3)
     change_config_dict["LabelFrame.func_decision"] = group_func_decision
 
     # 'con', 'cos', 'tg', 'op' 勾選框
@@ -95,7 +97,7 @@ if __name__ == "__main__":
     group_repeat_decision = tk.LabelFrame(
         root, text=lang["main.LabelFrame.repeat_decision"], padx=10, pady=10
     )
-    group_repeat_decision.grid(row=3, column=1, padx=10, pady=10, sticky="n")
+    group_repeat_decision.grid(row=3, column=1, padx=10, pady=10, sticky="n", rowspan=3)
     change_config_dict["LabelFrame.repeat_decision"] = group_repeat_decision
 
     # '總是覆蓋檔案', '總是跳過檔案' 勾選框
@@ -111,7 +113,7 @@ if __name__ == "__main__":
     repeat_decision_dict: dict[str, tk.BooleanVar] = {}
     for row, key in enumerate(["cover", "skip"]):
         repeat_decision_dict[key] = tk.BooleanVar(value=data["repeat_decision"] == key)
-        checkbutton = Creat_Checkbutton(
+        checkbutton = lib.Creat_Checkbutton(
             change_config_dict["LabelFrame.repeat_decision"],
             lang["main.checkbutton." + key],
             repeat_decision_dict[key],
@@ -122,19 +124,29 @@ if __name__ == "__main__":
 
     # 字體轉換
     def Lang_Change():
-        lang, data = Get_Globals()
+        lang, data = lib.Get_Globals()
         data["lang"] = "zh_tw" if data["lang"] == "zh_cn" else "zh_cn"
         with open("data/data.json", "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
-        lang, data = Get_Globals()
+        lang, data = lib.Get_Globals()
         # 改語言
         root.title(lang["main.root.title"])
         for key, item in change_config_dict.items():
             item.config(text=lang["main." + key])
 
-    button_lang_change = Creat_Button(root, lang["main.button.lang_change"], Lang_Change)
+    button_lang_change = lib.Creat_Button(
+        root, lang["main.button.lang_change"], Lang_Change
+    )
     button_lang_change.grid(row=3, column=2, padx=10, pady=10, sticky="n")
     change_config_dict["button.lang_change"] = button_lang_change
+
+    # 函數搜索器
+    def Func_Find():
+        Find_Func_Form()
+
+    button_func_find = lib.Creat_Button(root, lang["main.button.func_find"], Func_Find)
+    button_func_find.grid(row=4, column=2, padx=10, pady=10, sticky="n")
+    change_config_dict["button.func_find"] = button_func_find
 
     # 啟動主循環
     root.mainloop()

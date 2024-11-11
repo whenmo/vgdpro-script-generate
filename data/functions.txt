@@ -1,0 +1,114 @@
+
+========== vgd ============
+
+#普通指令卡的发动
+●Effect vgd.SpellActivate(c, m*, op*, cost*, con*)
+@c C 拥有这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+为卡片 c 注册一个普通指令卡的发动，回传这个效果 e
+
+#闪现指令卡的发动
+●Effect vgd.QuickSpell(c, op*, cost*, con*, tg*)
+@c C 拥有这个效果的卡
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+为卡片 c 注册一个闪现指令卡的发动，回传这个效果 e
+
+#设置指令卡的发动
+●Effect vgd.ContinuousSpell(c, cost*, con*, tg*)
+@c C 拥有这个效果的卡
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+为卡片 c 注册一个设置指令卡的发动，回传这个效果 e
+
+#【起】
+●Effect vgd.EffectTypeIgnition(c, m*, loc*, op*, cost*, con*, tg*, count*, property*, id*)
+@c C 拥有这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@loc=【V/R】 N 可以发动的区域
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+@count N 同一回合内最多发动的次数
+@property N 这个效果的特殊属性
+@id=1 N 提示脚本的卡号索引
+为卡片 c 注册一个【起】能力，回传这个效果 e
+
+#【自】
+●Effect vgd.EffectTypeTrigger(c, m*, loc*, type*, code, op*, cost*, con*, tg*, count*, property*, id*)
+@c C 拥有这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@loc=【V/R】 N 可以发动的区域
+@type=自己状态变化时触发 N 这个效果的触发类型(自己/自己以外)
+@code N 这个效果触发的时点
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+@count N 同一回合内最多发动的次数
+@property N 这个效果的特殊属性
+@id=1 N 提示脚本的卡号索引
+为卡片 c 注册一个【自】能力，回传这个效果 e
+
+#【自】被指定卡 ride 时触发
+●Effect vgd.BeRidedByCard(c, m*, code*, op*, cost*, con*, tg*)
+@c C 拥有这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@code=vgf.True N|F ride c 的卡的 指定卡号 或者 指定条件
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+为卡片 c 注册一个被指定卡ride时诱发的【自】能力，回传这个效果 e
+
+#【自】击中时触发
+●Effect vgd.EffectTypeTriggerWhenHitting(c, m*, loc*, type*, op*, cost*, con*, tg*, count*, player*, property*, id*)
+@c C 拥有这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@loc=【V/R】 N 可以发动的区域
+@type=自己状态变化时触发 N 这个效果的触发类型(自己/自己以外)
+@op F 这个效果的处理函数
+@cost F 这个效果的费用函数
+@con F 这个效果的条件函数
+@tg F 这个效果的检查函数
+@count N 同一回合内最多发动的次数
+@player=c的控制者 N 攻击的卡的控制者
+@property N 这个效果的特殊属性
+@id=1 N 提示脚本的卡号索引
+为卡片 c 注册一个击中时触发的【自】能力，回传这个效果 e
+
+#【永】力量数值变更
+●Effect vgd.EffectTypeContinuousChangeAttack(c, m*, loc*, type*, val, con*, tg*, loc_self*, loc_op*, reset*, mc*)
+@c C 创建这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@loc=【V/R】 N 可以发动的区域
+@type=只影响自己 N 这个效果的影响范围(自己/全域)
+@val N|F 这个效果的变化数值，应为数字或返回数字的函数
+@con F 这个效果的条件函数
+@tg F 这个效果的影响目标(全域)
+@loc_self N 这个效果影响的自己区域，影响全域范围才需填
+@loc_op N 这个效果影响的对方区域，影响全域范围才需填
+@reset N 这个效果的重置条件
+@mc=c C 拥有这个效果的卡
+为卡片 c 注册一个力量数值变更的【永】能力，回传这个效果 e
+
+#【永】盾护数值变更
+●Effect vgd.EffectTypeContinuousChangeDefense(c, m*, type*, val, con*, tg*, loc_self*, loc_op*, reset*, mc*)
+@c C 创建这个效果的卡
+@m=c原本卡号 N 储存提示脚本的卡号
+@type=只影响自己 N 这个效果的影响范围(自己/全域)
+@val N|F 这个效果的变化数值，应为数字或返回数字的函数
+@con F 这个效果的条件函数
+@tg F 这个效果的影响目标(全域)
+@loc_self N 这个效果影响的自己区域，影响全域范围才需填
+@loc_op N 这个效果影响的对方区域，影响全域范围才需填
+@reset N 这个效果的重置条件
+@mc=c C 拥有这个效果的卡
+为卡片 c 注册一个盾护数值变更的【永】能力，回传这个效果 e

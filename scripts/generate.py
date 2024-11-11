@@ -1,6 +1,7 @@
 import os, sqlite3, json, re
+import self_library as lib
 from tkinter import messagebox
-from form import Select_Cover_Form, Get_Globals, Card
+from form_select_cover import Select_Cover_Form
 
 with open("data/constant.json", "r", encoding="utf-8") as file:
     data = json.load(file)
@@ -10,15 +11,14 @@ with open("data/constant.json", "r", encoding="utf-8") as file:
 
 def File_Generation_Manager(path: str) -> None:
     """根據路徑讀取並生成檔案"""
-    lang, data = Get_Globals()
-    # get paths
-    script_path, cdb_paths = Get_Paths(path)
+    lang, data = lib.Get_Globals()
+    script_path = os.path.join(os.path.dirname(path), "script")
     os.makedirs(script_path, exist_ok=True)
     # load cdbs
-    for cdb_path in cdb_paths:
+    for cdb_path in Get_Paths(path):
         # ganerate
         show_res: str = ""
-        repeat_cards: list[Card] = []
+        repeat_cards: list[lib.Card] = []
         for card in Load_Cdb_Data(script_path, cdb_path):
             # skip chk
             if os.path.exists(card.path):
@@ -42,19 +42,18 @@ def File_Generation_Manager(path: str) -> None:
         )
 
 
-def Get_Paths(path: str) -> tuple[str, list[str]]:
+def Get_Paths(path: str) -> list[str]:
     """獲取 script 絕對路徑以及 cdb 絕對路徑列表"""
-    lang, _ = Get_Globals()
+    lang, _ = lib.Get_Globals()
     # 路徑是 .cdb 文件
     if path.endswith(".cdb"):
-        return os.path.join(os.path.dirname(path), "script"), [path]
+        return [path]
     # 路徑不是合法目錄
     if not os.path.isdir(path):
         messagebox.showerror(lang["message.error"], lang["message.not_legal"])
-        return "", []
+        return []
     # 初始化空列表，替換 Windows 路徑分隔符
     cdb_paths = []
-    path = path.replace("/", "\\")
     try:
         cdb_paths = [
             os.path.join(path, file)
@@ -68,18 +67,18 @@ def Get_Paths(path: str) -> tuple[str, list[str]]:
     if not cdb_paths:
         messagebox.showerror(lang["message.error"], lang["message.not_cdb"])
 
-    return os.path.join(path, "script"), cdb_paths
+    return cdb_paths
 
 
-def Load_Cdb_Data(script_path: str, cdb_path: str) -> list[Card]:
+def Load_Cdb_Data(script_path: str, cdb_path: str) -> list[lib.Card]:
     """加載 cdb 文件中的數據"""
-    lang, _ = Get_Globals()
-    cdb_data: list[Card] = []
+    lang, _ = lib.Get_Globals()
+    cdb_data: list[lib.Card] = []
     try:
         with sqlite3.connect(cdb_path) as cdb:
             cdb_cursor = cdb.cursor()
             cdb_cursor.execute("SELECT * FROM texts;")
-            cdb_data = [Card(texts, script_path) for texts in cdb_cursor.fetchall()]
+            cdb_data = [lib.Card(texts, script_path) for texts in cdb_cursor.fetchall()]
     except Exception as e:
         messagebox.showerror(
             lang["message.error"],
@@ -88,9 +87,9 @@ def Load_Cdb_Data(script_path: str, cdb_path: str) -> list[Card]:
     return cdb_data
 
 
-def Generate_Lua_File(card: Card) -> str:
+def Generate_Lua_File(card: lib.Card) -> str:
     """生成 lua 文件並返回生成文件名"""
-    _, data = Get_Globals()
+    _, data = lib.Get_Globals()
     # get initial
     eff_count = 1
     initial, func = "", ""
@@ -226,12 +225,12 @@ def Get_Continuous(eff: str, loc: str, typ: str, con: str, tg: str):
         match = re.search(rf"{key}([^\d\+\-]*[\d\+\-]*\d+)", eff)
         return int(match.group(1)) if match else "val"
 
-    target_range_chk = "" if typ == "EFFECT_TYPE_SINGLE" else ", loc_self, loc_op"
+    target_range_chk = "" if typ == "EFFECT_TYPE_SINGLE" else f"{tg}, loc_self, loc_op"
     continuous_dic = {
-        "力量": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {Get_Val("力量")}, {con}, {tg}{target_range_chk})\n",
-        "盾护": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {Get_Val("盾护")}, {con}, {tg}{target_range_chk})\n",
-        "☆": f"vgd.EffectTypeContinuousChangeStar(c, m,{typ}, {Get_Val("☆")}, {con}, {tg}{target_range_chk})\n",
+        "力量": f"vgd.EffectTypeContinuousChangeAttack(c, m, {loc}, {typ}, {Get_Val("力量")}, {con}, {target_range_chk})\n",
+        "盾护": f"vgd.EffectTypeContinuousChangeDefense(c, m, {typ}, {Get_Val("盾护")}, {con}, {target_range_chk})\n",
+        "☆": f"vgd.EffectTypeContinuousChangeStar(c, m,{typ}, {Get_Val("☆")}, {con}, {target_range_chk})\n",
     }
     if eff_line := "".join(continuous_dic[key] for key in continuous_dic if key in eff):
         return eff_line
-    return f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, val, {con}, {tg}{target_range_chk})\n"
+    return f"vgd.EffectTypeContinuous(c, m, {loc}, {typ}, code, val, {con}, {target_range_chk})\n"
