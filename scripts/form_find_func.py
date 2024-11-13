@@ -15,10 +15,6 @@ def Find_Func_Form():
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
 
-    # 設置 style 並調整字體大小
-    style = ttk.Style()
-    style.configure("Treeview", font=("Arial", 10))  # 設置字體為12，這將影響每行的高度
-
     # frame 1
     frame_1 = tk.Frame(root, relief="flat", borderwidth=1, padx=10, pady=10)
     frame_1.grid(row=0, column=0, sticky="nsew")
@@ -34,8 +30,8 @@ def Find_Func_Form():
         funcs_show = [funcs for funcs in funcs_datas if funcs.Match(search_key)]
         for item in find_view.get_children():
             find_view.delete(item)
-        for funcs in funcs_show:
-            find_view.insert("", tk.END, values=[funcs.name, funcs.func])
+        for ind, funcs in enumerate(funcs_show):
+            find_view.insert("", tk.END, iid=ind, values=[funcs.name, funcs.func])
 
     search_txt = tk.Text(frame_1, relief="solid", height=1)
     search_txt.grid(row=0, column=0, sticky="nsew")
@@ -82,12 +78,14 @@ def Find_Func_Form():
         """顯示函數細節"""
         if find_view.identify("region", event.x, event.y) != "cell":
             return  # 如果點擊的是單元格
-        if not (row_id := find_view.identify_row(event.y)[3:]).isdigit():
+        if not (row_id := find_view.identify_row(event.y)).isdigit():
             return
-        func_data: lib.Funcs = funcs_show[int(row_id) - 1]  # 獲取對應的函數資料
+        func_data: lib.Funcs = funcs_show[int(row_id)]  # 獲取對應的函數資料
         info_name_txt.delete(0, "end")
         info_name_txt.insert("end", func_data.Get_Func_Line())
-        info_res_txt.config(text=lang["Label.res_type"] + func_data.res or lang["Label.no_res"])
+        info_res_txt.config(
+            text=lang["Label.res_type"] + func_data.res or lang["Label.no_res"]
+        )
         func_data.Insert_Param(param_view)
         info_txt.delete("1.0", "end")
         info_txt.insert("1.0", func_data.info)
@@ -110,15 +108,15 @@ def Find_Func_Form():
     find_view.grid(row=2, column=0, sticky="nsew")
     find_view.heading("info", text=lang["find_view.info"], anchor="w")
     find_view.heading("func", text=lang["find_view.func"], anchor="w")
-    find_view.column("info", width=180, anchor="w", stretch=False)
-    find_view.column("func", width=250, anchor="w")
+    find_view.column("info", width=250, anchor="w", stretch=False)
+    find_view.column("func", width=180, anchor="w")
     find_view.bind("<ButtonRelease-1>", Click_Table)
     find_view.bind("<Double-1>", Copy_Table)
 
     # 獲取數據並初始化
     funcs_datas: list[lib.Funcs] = Load_Func()
-    for funcs in (funcs_show := funcs_datas):
-        find_view.insert("", tk.END, values=[funcs.name, funcs.func])
+    for ind, funcs in enumerate(funcs_show := funcs_datas):
+        find_view.insert("", tk.END, iid=ind, values=[funcs.name, funcs.func])
 
     # 提示文字
     tk.Label(frame_1, text=lang["Label.hint"]).grid(row=3, column=0, sticky="w")
@@ -126,7 +124,7 @@ def Find_Func_Form():
     # frame 2
     frame_2 = tk.Frame(root, relief="flat", borderwidth=1, padx=10)
     frame_2.grid(row=0, column=1, sticky="nsew")
-    frame_2.grid_rowconfigure(3, weight=1)
+    frame_2.grid_rowconfigure(4, weight=1)
     frame_2.grid_columnconfigure(0, weight=1)
 
     # info 名稱 txt
@@ -134,13 +132,9 @@ def Find_Func_Form():
     info_name_txt.grid(row=0, column=0, pady=10, sticky="nsew")
     info_name_txt.bind("<<Modified>>", block_edit)
 
-    # info 返回值
-    info_res_txt = tk.Label(frame_2, text=lang["Label.res_type"], anchor="w")
-    info_res_txt.grid(row=1, column=0, sticky="w")
-
     # info 參數類型提示
     info_typ_hint = tk.Label(frame_2, text=lang["Label.type_hint"], anchor="e")
-    info_typ_hint.grid(row=1, column=0, sticky="e")
+    info_typ_hint.grid(row=1, column=0, sticky="w")
 
     # info 參數列表
     param_view = ttk.Treeview(
@@ -156,9 +150,13 @@ def Find_Func_Form():
     param_view.column("default", width=80, anchor="w")
     param_view.column("info", width=300, anchor="w")
 
+    # info 返回值
+    info_res_txt = tk.Label(frame_2, text=lang["Label.res_type"], anchor="w")
+    info_res_txt.grid(row=3, column=0, sticky="w")
+
     # info 函數詳解
     info_txt = tk.Text(frame_2, width=50, height=10, relief="solid")
-    info_txt.grid(row=3, column=0, pady=10, sticky="nsew")
+    info_txt.grid(row=4, column=0, pady=10, sticky="nsew")
     info_txt.bind("<Key>", block_edit)
 
     root.mainloop()
@@ -170,15 +168,17 @@ def Load_Func() -> list[lib.Funcs]:
     temp_data: lib.Funcs = None
     with open("data/functions.txt", "r", encoding="utf-8") as file:
         for line in file:
-            if (line_st := line[0]) == "#":
+            if line.startswith("@name"):
                 if temp_data:
                     data.append(temp_data)
-                temp_data = lib.Funcs(line)
-            elif line_st == "●":
-                temp_data.Set_Func(line)
-            elif line_st == "@":
-                temp_data.Set_Param_Detail(line)
-            elif line_st not in ("=", "\n"):
+                temp_data = lib.Funcs(line.strip().split(" ", 1)[1])
+            elif line.startswith("@function"):
+                temp_data.Set_Func(line.strip().split(" ", 1)[1])
+            elif line.startswith("@param"):
+                temp_data.Set_Param_Detail(line.strip().split(" ", 1)[1])
+            elif line.startswith("@return"):
+                temp_data.res = line.strip().split(" ", 1)[1]
+            elif line[0] not in ("=", "\n"):
                 temp_data.info += line
         if temp_data:
             data.append(temp_data)
@@ -188,3 +188,6 @@ def Load_Func() -> list[lib.Funcs]:
 def block_edit(event):
     "禁用 info 的編輯功能"
     return "break"
+
+
+# Find_Func_Form()

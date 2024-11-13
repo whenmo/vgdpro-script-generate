@@ -1,4 +1,7 @@
-import json, tkinter, os, re
+import json
+import tkinter
+import os
+import re
 from tkinter import ttk
 
 
@@ -46,29 +49,28 @@ class Funcs:
     """functions.txt 資料轉化"""
 
     def __init__(self, name_line: str = ""):
-        # #普通指令卡的发动
-        self.name = name_line.split("#")[-1].strip() if name_line else ""
+        # 普通指令卡的发动
+        self.name = name_line
         self.func: str = ""
-        self.info: str = ""
-        self.res: str = ""
         self.param: dict = {}
+        self.res: str = ""
+        self.info: str = ""
 
     def Set_Func(self, func_line: str):
-        # ●void vgd.SpellActivate((c, m*, op*, cost*, con*))
-        match = re.match(r"(\w+)\s+([\w\.]+)\(([^)]*)\)", func_line.strip()[1:])
-        self.res = "" if match.group(1) == "void" else match.group(1)  # Effect
-        self.func = match.group(2)  # vgd.SpellActivate
-        for name in match.group(3).split(", "):  # (c, m*, op*, cost*, con*)
+        # vgd.SpellActivate(c, m*, op*, cost*, con*)
+        match = re.match(r"([\w\.]+)\(([^)]*)\)", func_line)
+        self.func = match.group(1)  # vgd.SpellActivate
+        for name in match.group(2).split(", "):  # c, m*, op*, cost*, con*
             name = name[:-1] if (nilable := "*" in name) else name
             self.param[name] = {"nilable": nilable}
 
     def Set_Param_Detail(self, param_line: str):
-        # @m=c:GetOriginalCode() N 储存提示脚本的卡号
-        name, type, info = param_line.strip()[1:].split(" ", 2)
+        # m=c:GetOriginalCode() N 储存提示脚本的卡号
+        name, typ, info = param_line.strip().split(" ", 2)
         default = ""
         if "=" in name:
             name, default = name.split("=")
-        self.param[name]["type"] = type
+        self.param[name]["type"] = typ
         self.param[name]["default"] = default
         self.param[name]["info"] = info
 
